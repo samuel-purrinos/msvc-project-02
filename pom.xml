@@ -16,6 +16,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>product-service</module>
+        <module>order-service</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
