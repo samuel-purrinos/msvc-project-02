@@ -18,6 +18,7 @@
         <module>product-service</module>
         <module>order-service</module>
         <module>stock-service</module>
+        <module>discovery-server</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
