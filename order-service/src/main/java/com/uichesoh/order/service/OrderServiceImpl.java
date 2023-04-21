@@ -24,7 +24,7 @@ public class OrderServiceImpl implements OrderService{
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
-    private WebClient webClient;
+    private WebClient.Builder webClientBuilder;
     @Override
     public void placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
@@ -40,8 +40,8 @@ public class OrderServiceImpl implements OrderService{
 
         log.info("Order : {}. skuCodes : {}",order.getOrderNumber(),skuCodes);
 
-        StockResponse[] stockResponseArray = webClient.get()
-                .uri("http://localhost:8082/api/v1/stock/",uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
+        StockResponse[] stockResponseArray = webClientBuilder.build().get()
+                .uri("http://stock-service/api/v1/stock/",uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
                 .retrieve()
                 .bodyToMono(StockResponse[].class)
                 .block();
