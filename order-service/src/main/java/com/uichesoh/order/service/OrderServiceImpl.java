@@ -9,6 +9,8 @@ import com.uichesoh.order.repository.OrderRepository;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.sleuth.Span;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -26,6 +28,8 @@ public class OrderServiceImpl implements OrderService{
     private OrderRepository orderRepository;
     @Autowired
     private WebClient.Builder webClientBuilder;
+    @Autowired
+    private Tracer tracer;
     @Override
     @Transactional
     public String placeOrder(OrderRequest orderRequest) {
@@ -41,22 +45,30 @@ public class OrderServiceImpl implements OrderService{
                 .collect(Collectors.toList());
 
         log.info("Order : {}. skuCodes : {}",order.getOrderNumber(),skuCodes);
+        Span stockServiceSpan = tracer.nextSpan().name("stockServiceLookup");
 
-        StockResponse[] stockResponseArray = webClientBuilder.build().get()
-                .uri("http://stock-service/api/v1/stock/",uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
-                .retrieve()
-                .bodyToMono(StockResponse[].class)
-                .block();
+        try(Tracer.SpanInScope isLookup = tracer.withSpan(stockServiceSpan.start())) {
+        stockServiceSpan.tag("call","stock-service");
+            StockResponse[] stockResponseArray = webClientBuilder.build().get()
+                    .uri("http://stock-service/api/v1/stock/",uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
+                    .retrieve()
+                    .bodyToMono(StockResponse[].class)
+                    .block();
 
-        boolean allProductsHaveStock = Arrays.stream(stockResponseArray).allMatch(StockResponse::isHasStock);
-        if(allProductsHaveStock){
-            orderRepository.save(order);
-            log.info("Order {} placed succesfully",order.getOrderNumber());
-            return "Order placed succesfully";
-        }else{
-            log.error("Order {} not placed due running out of product stock",order.getOrderNumber());
-            throw new IllegalArgumentException("Product hasn´t stock");
+            boolean allProductsHaveStock = Arrays.stream(stockResponseArray).allMatch(StockResponse::isHasStock);
+            if(allProductsHaveStock){
+                orderRepository.save(order);
+                log.info("Order {} placed succesfully",order.getOrderNumber());
+                return "Order placed succesfully";
+            }else{
+                log.error("Order {} not placed due running out of product stock",order.getOrderNumber());
+                throw new IllegalArgumentException("Product hasn´t stock");
+            }
+        }finally{
+            stockServiceSpan.end();
         }
+
+
     }
 
     private OrderLineItems mapToDto(OrderLineItemsDto orderLineItemsDto){
