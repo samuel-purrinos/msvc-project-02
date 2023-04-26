@@ -6,6 +6,7 @@ import com.uichesoh.order.dto.StockResponse;
 import com.uichesoh.order.model.Order;
 import com.uichesoh.order.model.OrderLineItems;
 import com.uichesoh.order.repository.OrderRepository;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,8 @@ public class OrderServiceImpl implements OrderService{
     @Autowired
     private WebClient.Builder webClientBuilder;
     @Override
-    public void placeOrder(OrderRequest orderRequest) {
+    @Transactional
+    public String placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         List<OrderLineItems> orderLineItems = orderRequest.getOrderLineItems().stream()
@@ -50,6 +52,7 @@ public class OrderServiceImpl implements OrderService{
         if(allProductsHaveStock){
             orderRepository.save(order);
             log.info("Order {} placed succesfully",order.getOrderNumber());
+            return "Order placed succesfully";
         }else{
             log.error("Order {} not placed due running out of product stock",order.getOrderNumber());
             throw new IllegalArgumentException("Product hasn´t stock");
