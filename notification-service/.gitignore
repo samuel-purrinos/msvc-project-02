@@ -31,8 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-mysql_keycloak_data
-mongo-data
-
-

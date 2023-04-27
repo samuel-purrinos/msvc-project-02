@@ -3,6 +3,7 @@ package com.uichesoh.order.service;
 import com.uichesoh.order.dto.OrderLineItemsDto;
 import com.uichesoh.order.dto.OrderRequest;
 import com.uichesoh.order.dto.StockResponse;
+import com.uichesoh.order.event.OrderPlacedEvent;
 import com.uichesoh.order.model.Order;
 import com.uichesoh.order.model.OrderLineItems;
 import com.uichesoh.order.repository.OrderRepository;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.sleuth.Span;
 import org.springframework.cloud.sleuth.Tracer;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -30,6 +32,8 @@ public class OrderServiceImpl implements OrderService{
     private WebClient.Builder webClientBuilder;
     @Autowired
     private Tracer tracer;
+    @Autowired
+    private KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
     @Override
     @Transactional
     public String placeOrder(OrderRequest orderRequest) {
@@ -59,6 +63,7 @@ public class OrderServiceImpl implements OrderService{
             if(allProductsHaveStock){
                 orderRepository.save(order);
                 log.info("Order {} placed succesfully",order.getOrderNumber());
+                kafkaTemplate.send("notificationTopic",new OrderPlacedEvent(order.getOrderNumber()));
                 return "Order placed succesfully";
             }else{
                 log.error("Order {} not placed due running out of product stock",order.getOrderNumber());
