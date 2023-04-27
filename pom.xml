@@ -21,6 +21,7 @@
         <module>discovery-server</module>
         <module>api-gateway</module>
         <module>notification-service</module>
+        <module>message-service</module>
     </modules>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

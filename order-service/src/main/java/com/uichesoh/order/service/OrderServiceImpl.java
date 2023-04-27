@@ -1,5 +1,6 @@
 package com.uichesoh.order.service;
 
+import com.uichesoh.order.config.rabbitmq.Producer;
 import com.uichesoh.order.dto.OrderLineItemsDto;
 import com.uichesoh.order.dto.OrderRequest;
 import com.uichesoh.order.dto.StockResponse;
@@ -34,6 +35,9 @@ public class OrderServiceImpl implements OrderService{
     private Tracer tracer;
     @Autowired
     private KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
+    @Autowired
+    private Producer producer;
+
     @Override
     @Transactional
     public String placeOrder(OrderRequest orderRequest) {
@@ -64,6 +68,7 @@ public class OrderServiceImpl implements OrderService{
                 orderRepository.save(order);
                 log.info("Order {} placed succesfully",order.getOrderNumber());
                 kafkaTemplate.send("notificationTopic",new OrderPlacedEvent(order.getOrderNumber()));
+                this.sendMessageWithRabbitMq("Order "+order.getOrderNumber()+" placed succesfully");
                 return "Order placed succesfully";
             }else{
                 log.error("Order {} not placed due running out of product stock",order.getOrderNumber());
@@ -74,6 +79,11 @@ public class OrderServiceImpl implements OrderService{
         }
 
 
+    }
+
+    private void sendMessageWithRabbitMq(String message){
+        log.info("Message '{}' have been send succesfully",message);
+        producer.send(message);
     }
 
     private OrderLineItems mapToDto(OrderLineItemsDto orderLineItemsDto){
